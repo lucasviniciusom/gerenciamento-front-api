@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 
 const ProjectPage = () => {
+  const { id } = useParams(); // Captura o ID do projeto a partir da URL
   const [tarefas, setTarefas] = useState([]);
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -12,10 +14,10 @@ const ProjectPage = () => {
   const [tarefaEditando, setTarefaEditando] = useState(null);
   const [error, setError] = useState(null);
 
+  // Função para buscar tarefas do projeto
   const fetchTarefas = useCallback(async () => {
     try {
-      const response = await axios.get('https://localhost:44374/api/Tarefas');
-      console.log('Resposta da API ao buscar tarefas:', response.data);
+      const response = await axios.get(`https://localhost:44374/api/Tarefas?projetoId=${id}`);
       const tarefasArray = response.data.items?.$values || response.data;
       setTarefas(Array.isArray(tarefasArray) ? tarefasArray : []);
       setError(null);
@@ -23,7 +25,7 @@ const ProjectPage = () => {
       setError('Não foi possível carregar as tarefas.');
       console.error('Erro ao buscar tarefas:', error);
     }
-  }, []);
+  }, [id]);
 
   useEffect(() => {
     fetchTarefas();
@@ -57,17 +59,16 @@ const ProjectPage = () => {
       status: statusMapping[status],
       usuarioAtribuido: usuarioIdValido,
       dataVencimento: new Date(dataVencimento).toISOString(),
+      projetoId: id,
       criadoEm: new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
     };
 
     try {
       if (tarefaEditando) {
-        const response = await axios.put(`https://localhost:44374/api/Tarefas/${tarefaEditando}`, tarefaData);
-        console.log('Tarefa editada com sucesso:', response.data);
+        await axios.put(`https://localhost:44374/api/Tarefas/${tarefaEditando}`, tarefaData);
       } else {
-        const response = await axios.post('https://localhost:44374/api/Tarefas', tarefaData);
-        console.log('Tarefa adicionada com sucesso:', response.data);
+        await axios.post('https://localhost:44374/api/Tarefas', tarefaData);
       }
 
       resetForm();
@@ -101,7 +102,6 @@ const ProjectPage = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(`https://localhost:44374/api/Tarefas/${id}`);
-      console.log('Tarefa deletada com sucesso:', id);
       fetchTarefas();
     } catch (error) {
       setError('Não foi possível deletar a tarefa.');
@@ -111,7 +111,7 @@ const ProjectPage = () => {
 
   return (
     <div>
-      <h1>Todas as Tarefas</h1>
+      <h1>Todas as Tarefas do Projeto</h1>
       {error && <div style={{ color: 'red' }}>{error}</div>}
 
       <h2>Tarefas</h2>
@@ -120,10 +120,9 @@ const ProjectPage = () => {
           tarefas.map((tarefa) => (
             <li key={tarefa.tarefaId}>
               <strong>{tarefa.titulo}</strong> - {tarefa.descricao} <br />
-              (Status: {tarefa.status}, Prioridade: {tarefa.prioridade}, Data de Vencimento: {new Date(tarefa.dataVencimento).toLocaleDateString()})
+              (Status: {tarefa.status === 0 ? 'Não Iniciada' : tarefa.status === 1 ? 'Em Andamento' : 'Finalizada'}, Prioridade: {tarefa.prioridade === 0 ? 'Baixa' : tarefa.prioridade === 1 ? 'Média' : 'Alta'}, Data de Vencimento: {new Date(tarefa.dataVencimento).toLocaleDateString()})
               <button onClick={() => handleEdit(tarefa)}>Editar</button>
-              {/* Usando o id correto para a exclusão */}
-              <button onClick={() => handleDelete(tarefa.id)}>Excluir</button>
+              <button onClick={() => handleDelete(tarefa.tarefaId)}>Excluir</button>
             </li>
           ))
         ) : (
@@ -135,30 +134,17 @@ const ProjectPage = () => {
       <form onSubmit={handleSubmit}>
         <div>
           <label>Título</label>
-          <input
-            type="text"
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            required
-          />
+          <input type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
         </div>
 
         <div>
           <label>Descrição</label>
-          <textarea
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            required
-          />
+          <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} required />
         </div>
 
         <div>
           <label>Prioridade</label>
-          <select
-            value={prioridade}
-            onChange={(e) => setPrioridade(e.target.value)}
-            required
-          >
+          <select value={prioridade} onChange={(e) => setPrioridade(e.target.value)} required>
             <option value="Baixa">Baixa</option>
             <option value="Média">Média</option>
             <option value="Alta">Alta</option>
@@ -167,11 +153,7 @@ const ProjectPage = () => {
 
         <div>
           <label>Status</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            required
-          >
+          <select value={status} onChange={(e) => setStatus(e.target.value)} required>
             <option value="Não_iniciada">Não Iniciada</option>
             <option value="Em_andamento">Em Andamento</option>
             <option value="Finalizada">Finalizada</option>
@@ -180,27 +162,21 @@ const ProjectPage = () => {
 
         <div>
           <label>Usuário Atribuído (ID)</label>
-          <input
-            type="number"
-            value={usuarioAtribuido}
-            onChange={(e) => setUsuarioAtribuido(e.target.value)}
-            required
-          />
+          <input type="number" value={usuarioAtribuido} onChange={(e) => setUsuarioAtribuido(e.target.value)} required />
         </div>
 
         <div>
           <label>Data de Vencimento</label>
-          <input
-            type="date"
-            value={dataVencimento}
-            onChange={(e) => setDataVencimento(e.target.value)}
-            required
-          />
+          <input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} required />
         </div>
 
         <button type="submit">{tarefaEditando ? 'Atualizar' : 'Adicionar'}</button>
         <button type="button" onClick={resetForm}>Cancelar</button>
       </form>
+
+      <Link to="/" style={{ display: 'block', marginTop: '20px' }}>
+        Voltar para Projetos
+      </Link>
     </div>
   );
 };
