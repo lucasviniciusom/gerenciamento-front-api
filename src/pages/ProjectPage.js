@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import './ProjectPage.css';
 
 const ProjectPage = () => {
-  const { id } = useParams(); // Captura o ID do projeto a partir da URL
+  const { id } = useParams();
   const [tarefas, setTarefas] = useState([]);
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -14,7 +15,6 @@ const ProjectPage = () => {
   const [tarefaEditando, setTarefaEditando] = useState(null);
   const [error, setError] = useState(null);
 
-  // Função para buscar tarefas do projeto
   const fetchTarefas = useCallback(async () => {
     try {
       const response = await axios.get(`https://localhost:44374/api/Tarefas?projetoId=${id}`);
@@ -23,7 +23,6 @@ const ProjectPage = () => {
       setError(null);
     } catch (error) {
       setError('Não foi possível carregar as tarefas.');
-      console.error('Erro ao buscar tarefas:', error);
     }
   }, [id]);
 
@@ -32,15 +31,15 @@ const ProjectPage = () => {
   }, [fetchTarefas]);
 
   const prioridadeMapping = {
-    'Baixa': 0,
-    'Média': 1,
-    'Alta': 2,
+    Baixa: 0,
+    Média: 1,
+    Alta: 2,
   };
 
   const statusMapping = {
-    'Não_iniciada': 0,
-    'Em_andamento': 1,
-    'Finalizada': 2,
+    Não_iniciada: 0,
+    Em_andamento: 1,
+    Finalizada: 2,
   };
 
   const handleSubmit = async (e) => {
@@ -60,8 +59,6 @@ const ProjectPage = () => {
       usuarioAtribuido: usuarioIdValido,
       dataVencimento: new Date(dataVencimento).toISOString(),
       projetoId: id,
-      criadoEm: new Date().toISOString(),
-      atualizadoEm: new Date().toISOString(),
     };
 
     try {
@@ -75,7 +72,6 @@ const ProjectPage = () => {
       fetchTarefas();
     } catch (error) {
       setError('Não foi possível adicionar ou editar a tarefa.');
-      console.error('Erro ao adicionar ou editar tarefa:', error);
     }
   };
 
@@ -105,43 +101,47 @@ const ProjectPage = () => {
       fetchTarefas();
     } catch (error) {
       setError('Não foi possível deletar a tarefa.');
-      console.error('Erro ao deletar tarefa:', error);
     }
   };
 
   return (
-    <div>
+    <div className="container">
       <h1>Todas as Tarefas do Projeto</h1>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-
+      {error && <div className="error">{error}</div>}
       <h2>Tarefas</h2>
       <ul>
         {tarefas.length > 0 ? (
           tarefas.map((tarefa) => (
             <li key={tarefa.tarefaId}>
-              <strong>{tarefa.titulo}</strong> - {tarefa.descricao} <br />
-              (Status: {tarefa.status === 0 ? 'Não Iniciada' : tarefa.status === 1 ? 'Em Andamento' : 'Finalizada'}, Prioridade: {tarefa.prioridade === 0 ? 'Baixa' : tarefa.prioridade === 1 ? 'Média' : 'Alta'}, Data de Vencimento: {new Date(tarefa.dataVencimento).toLocaleDateString()})
-              <button onClick={() => handleEdit(tarefa)}>Editar</button>
-              <button onClick={() => handleDelete(tarefa.tarefaId)}>Excluir</button>
+              <div>
+                <strong>{tarefa.titulo}</strong>
+                <p>{tarefa.descricao}</p>
+                <p>
+                  (Status: {tarefa.status === 0 ? 'Não Iniciada' : tarefa.status === 1 ? 'Em Andamento' : 'Finalizada'}, 
+                  Prioridade: {tarefa.prioridade === 0 ? 'Baixa' : tarefa.prioridade === 1 ? 'Média' : 'Alta'}, 
+                  Data de Vencimento: {new Date(tarefa.dataVencimento).toLocaleDateString()})
+                </p>
+              </div>
+              <div>
+                <button onClick={() => handleEdit(tarefa)}>Editar</button>
+                <button onClick={() => handleDelete(tarefa.tarefaId)}>Excluir</button>
+              </div>
             </li>
           ))
         ) : (
           <li>Nenhuma tarefa encontrada.</li>
         )}
       </ul>
-
       <h2>{tarefaEditando ? 'Editar Tarefa' : 'Adicionar Nova Tarefa'}</h2>
       <form onSubmit={handleSubmit}>
         <div>
           <label>Título</label>
           <input type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
         </div>
-
         <div>
           <label>Descrição</label>
           <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} required />
         </div>
-
         <div>
           <label>Prioridade</label>
           <select value={prioridade} onChange={(e) => setPrioridade(e.target.value)} required>
@@ -150,7 +150,6 @@ const ProjectPage = () => {
             <option value="Alta">Alta</option>
           </select>
         </div>
-
         <div>
           <label>Status</label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} required>
@@ -159,22 +158,18 @@ const ProjectPage = () => {
             <option value="Finalizada">Finalizada</option>
           </select>
         </div>
-
         <div>
           <label>Usuário Atribuído (ID)</label>
           <input type="number" value={usuarioAtribuido} onChange={(e) => setUsuarioAtribuido(e.target.value)} required />
         </div>
-
         <div>
           <label>Data de Vencimento</label>
           <input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} required />
         </div>
-
         <button type="submit">{tarefaEditando ? 'Atualizar' : 'Adicionar'}</button>
         <button type="button" onClick={resetForm}>Cancelar</button>
       </form>
-
-      <Link to="/" style={{ display: 'block', marginTop: '20px' }}>
+      <Link to="/" className="back-link">
         Voltar para Projetos
       </Link>
     </div>

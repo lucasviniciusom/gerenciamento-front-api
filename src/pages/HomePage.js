@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom'; // Importe o Link para navegação
+import './HomePage.css';
 
 const HomePage = () => {
   const [projetos, setProjetos] = useState([]);
@@ -8,21 +8,19 @@ const HomePage = () => {
   const [descricao, setDescricao] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
-  const [status, setStatus] = useState(0); // Mudado para número
+  const [status, setStatus] = useState(0);
   const [projetoEditando, setProjetoEditando] = useState(null);
   const [error, setError] = useState(null);
+  const [formVisible, setFormVisible] = useState(false);
 
-  // Função para buscar projetos
   const fetchProjetos = useCallback(async () => {
     try {
       const response = await axios.get('https://localhost:44374/api/Projetos');
-      console.log('Resposta da API ao buscar projetos:', response.data);
       const projetosArray = response.data.items?.$values || response.data;
       setProjetos(Array.isArray(projetosArray) ? projetosArray : []);
       setError(null);
     } catch (error) {
       setError('Não foi possível carregar os projetos.');
-      console.error('Erro ao buscar projetos:', error);
     }
   }, []);
 
@@ -34,31 +32,26 @@ const HomePage = () => {
     e.preventDefault();
 
     const projetoData = {
-      id: projetoEditando ? projetoEditando : 0, // Usando o ID se estiver editando
+      id: projetoEditando ? projetoEditando.id : 0,
       nome,
       descricao,
       dataInicio: new Date(dataInicio).toISOString(),
-      dataFim: new Date(dataFim).toISOString(),
-      status: status, // Mantendo o status como número
-      criadoEm: new Date().toISOString(),
-      atualizadoEm: new Date().toISOString(),
+      dataFim: dataFim ? new Date(dataFim).toISOString() : null,
+      status,
     };
 
     try {
       if (projetoEditando) {
-        const response = await axios.put(`https://localhost:44374/api/Projetos/${projetoEditando}`, projetoData);
-        console.log('Projeto editado com sucesso:', response.data);
+        await axios.put(`https://localhost:44374/api/Projetos/${projetoEditando.id}`, projetoData);
       } else {
-        const response = await axios.post('https://localhost:44374/api/Projetos', projetoData);
-        console.log('Projeto adicionado com sucesso:', response.data);
+        await axios.post('https://localhost:44374/api/Projetos', projetoData);
       }
 
       resetForm();
       fetchProjetos();
+      setFormVisible(false);
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Não foi possível adicionar ou editar o projeto.';
-      setError(errorMessage);
-      console.error('Erro ao adicionar ou editar projeto:', error);
+      setError('Não foi possível adicionar ou editar o projeto.');
     }
   };
 
@@ -67,48 +60,61 @@ const HomePage = () => {
     setDescricao('');
     setDataInicio('');
     setDataFim('');
-    setStatus(0); // Resetando para o status padrão (número)
+    setStatus(0);
     setProjetoEditando(null);
-    setError(null); // Limpa qualquer erro anterior
+    setError(null);
+  };
+
+  const toggleFormVisibility = () => {
+    setFormVisible(!formVisible);
+    if (projetoEditando) resetForm();
   };
 
   const handleEdit = (projeto) => {
+    setProjetoEditando(projeto);
     setNome(projeto.nome);
     setDescricao(projeto.descricao);
-    setDataInicio(new Date(projeto.dataInicio).toISOString().split('T')[0]);
-    setDataFim(new Date(projeto.dataFim).toISOString().split('T')[0]);
-    setStatus(projeto.status); // O status agora é tratado como número
-    setProjetoEditando(projeto.id);
-    setError(null); // Limpa qualquer erro anterior
+    setDataInicio(projeto.dataInicio.split('T')[0]);
+    setDataFim(projeto.dataFim ? projeto.dataFim.split('T')[0] : '');
+    setStatus(projeto.status);
+    setFormVisible(true);
   };
 
   const handleDelete = async (id) => {
     try {
       await axios.delete(`https://localhost:44374/api/Projetos/${id}`);
-      console.log('Projeto deletado com sucesso:', id);
       fetchProjetos();
     } catch (error) {
       setError('Não foi possível deletar o projeto.');
-      console.error('Erro ao deletar projeto:', error);
     }
   };
 
   return (
-    <div>
-      <h1>Todas os Projetos</h1>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+    <div className="container">
+      <h1>Todos os Projetos</h1>
+      {error && <div className="error">{error}</div>}
 
-      <h2>Projetos</h2>
       <ul>
         {projetos.length > 0 ? (
           projetos.map((projeto) => (
             <li key={projeto.id}>
-              <strong>
-                <Link to={`/projetos/${projeto.id}`}>{projeto.nome}</Link>
-              </strong> - {projeto.descricao} <br />
-              (Data de Início: {new Date(projeto.dataInicio).toLocaleDateString()}, Data de Fim: {new Date(projeto.dataFim).toLocaleDateString()}, Status: {projeto.status})
-              <button onClick={() => handleEdit(projeto)}>Editar</button>
-              <button onClick={() => handleDelete(projeto.id)}>Excluir</button>
+              <div>
+                <strong>{projeto.nome}</strong>
+                <p>{projeto.descricao}</p>
+                <p>
+                  (Data de Início: {new Date(projeto.dataInicio).toLocaleDateString()}, Data de Fim:{' '}
+                  {projeto.dataFim ? new Date(projeto.dataFim).toLocaleDateString() : 'Não definido'}, Status:{' '}
+                  {projeto.status === 0
+                    ? 'Em Andamento'
+                    : projeto.status === 1
+                    ? 'Concluído'
+                    : 'Cancelado'})
+                </p>
+              </div>
+              <div>
+                <button onClick={() => handleEdit(projeto)}>Editar</button>
+                <button onClick={() => handleDelete(projeto.id)}>Excluir</button>
+              </div>
             </li>
           ))
         ) : (
@@ -116,63 +122,66 @@ const HomePage = () => {
         )}
       </ul>
 
-      <h2>{projetoEditando ? 'Editar Projeto' : 'Adicionar Novo Projeto'}</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Nome</label>
-          <input
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            required
-          />
-        </div>
+      <button onClick={toggleFormVisibility} className="toggle-form-btn">
+        {formVisible ? 'Cancelar' : 'Adicionar Novo Projeto'}
+      </button>
 
-        <div>
-          <label>Descrição</label>
-          <textarea
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            required
-          />
-        </div>
+      {formVisible && (
+        <form onSubmit={handleSubmit}>
+          <div>
+            <label>Nome</label>
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+            />
+          </div>
 
-        <div>
-          <label>Data de Início</label>
-          <input
-            type="date"
-            value={dataInicio}
-            onChange={(e) => setDataInicio(e.target.value)}
-            required
-          />
-        </div>
+          <div>
+            <label>Descrição</label>
+            <textarea
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              required
+            />
+          </div>
 
-        <div>
-          <label>Data de Fim</label>
-          <input
-            type="date"
-            value={dataFim}
-            onChange={(e) => setDataFim(e.target.value)}
-            required
-          />
-        </div>
+          <div>
+            <label>Data de Início</label>
+            <input
+              type="date"
+              value={dataInicio}
+              onChange={(e) => setDataInicio(e.target.value)}
+              required
+            />
+          </div>
 
-        <div>
-          <label>Status</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(Number(e.target.value))} // Convertendo para número
-            required
-          >
-            <option value={0}>Em Andamento</option>
-            <option value={1}>Concluído</option>
-            <option value={2}>Cancelado</option>
-          </select>
-        </div>
+          <div>
+            <label>Data de Fim</label>
+            <input
+              type="date"
+              value={dataFim}
+              onChange={(e) => setDataFim(e.target.value)}
+            />
+          </div>
 
-        <button type="submit">{projetoEditando ? 'Atualizar' : 'Adicionar'}</button>
-        <button type="button" onClick={resetForm}>Cancelar</button>
-      </form>
+          <div>
+            <label>Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(Number(e.target.value))}
+              required
+            >
+              <option value={0}>Em Andamento</option>
+              <option value={1}>Concluído</option>
+              <option value={2}>Cancelado</option>
+            </select>
+          </div>
+
+          <button type="submit">{projetoEditando ? 'Atualizar' : 'Adicionar'}</button>
+        </form>
+      )}
     </div>
   );
 };

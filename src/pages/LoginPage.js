@@ -8,8 +8,8 @@ const LoginPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Lógica de autenticação aqui
-    navigate('/home');  // Após login, redireciona para a página inicial
+
+    navigate('/home');  
   };
 
   return (
